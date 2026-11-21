@@ -29,6 +29,7 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 - Create and push a matching tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 - `.github/workflows/release.yml` verifies the tag matches the extension version, builds the project, and attaches `lofi-X.Y.Z.zip` to a GitHub Release.
 - Download that zip from GitHub Releases and upload it manually in the Chrome Web Store dashboard.
+- Store screenshots and promo tiles are in [`store-assets/`](store-assets/).
 
 ## Presets
 
