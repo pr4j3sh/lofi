@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ControlSlider from './components/ControlSlider';
 import ErrorBanner from './components/ErrorBanner';
 import PresetPicker from './components/PresetPicker';
+import SettingsIcon from './components/SettingsIcon';
 import { isHookableDomain } from '../sites/hookable-sites';
 import { findSite } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
@@ -273,8 +274,14 @@ export default function App() {
           <span className="logo">lofi</span>
           <span className="tagline">slow it down</span>
         </div>
-        <button className="icon-button" type="button" title="Settings" onClick={() => chrome.runtime.openOptionsPage()}>
-          ⚙
+        <button
+          className="icon-button"
+          type="button"
+          title="Settings"
+          aria-label="Settings"
+          onClick={() => chrome.runtime.openOptionsPage()}
+        >
+          <SettingsIcon />
         </button>
       </header>
 

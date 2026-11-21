@@ -27,7 +27,8 @@ body {
   cursor: pointer;
   font: inherit;
 }
-.icon-button { font-size: 18px; padding: 2px 4px; }
+.icon-button { display: flex; align-items: center; justify-content: center; padding: 2px 4px; }
+.icon-button svg { display: block; }
 .icon-button:hover, .settings-link:hover { color: #e2d5ff; }
 
 .site {

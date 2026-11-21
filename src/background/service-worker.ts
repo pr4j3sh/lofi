@@ -100,6 +100,12 @@ async function canReachPageHook(tabId: number): Promise<boolean> {
   }
 }
 
+async function clearHookSession(tabId: number): Promise<void> {
+  if ((await getHookTabId()) === tabId) await setHookTabId(null);
+  if ((await getAutoHookTabId()) === tabId) await setAutoHookTabId(null);
+  if ((await getAutoSuppressedTabId()) === tabId) await setAutoSuppressedTabId(null);
+}
+
 async function disableHook(tabId: number, notifyPage = true): Promise<void> {
   if (notifyPage) {
     try {
@@ -108,8 +114,7 @@ async function disableHook(tabId: number, notifyPage = true): Promise<void> {
       // The old page context may already be gone.
     }
   }
-  if ((await getHookTabId()) === tabId) await setHookTabId(null);
-  if ((await getAutoHookTabId()) === tabId) await setAutoHookTabId(null);
+  await clearHookSession(tabId);
   broadcastHookStatus(tabId, false, null);
   await updateBadge(tabId);
 }
@@ -137,8 +142,14 @@ async function maybeAutoEnableHook(tabId: number, url: string): Promise<void> {
     if (!site || !isHookableDomain(site.domain)) return;
 
     const captureTabId = await getSessionTabId();
-    if ((captureTabId !== null && captureTabId !== tabId) || (await getHookTabId()) === tabId) return;
+    if (captureTabId !== null && captureTabId !== tabId) return;
     if ((await getAutoSuppressedTabId()) === tabId) return;
+
+    // A stale session entry after a reload must not block re-injection.
+    if ((await getHookTabId()) === tabId) {
+      if (await canReachPageHook(tabId)) return;
+      await setHookTabId(null);
+    }
 
     await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['page-hook.js'] });
     await chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', files: ['content.js'] });
@@ -311,14 +322,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   void (async () => {
     if (changeInfo.url && (await getHookTabId()) === tabId) {
       // YouTube Music changes the URL when a track changes without reloading
-      // the document. Only a real navigation should tear down the page hook.
+      // the document. Only a real navigation invalidates the injected page.
       const realNavigation = changeInfo.status === 'loading' || changeInfo.status === 'complete';
-      if (realNavigation || !(await canReachPageHook(tabId))) {
-        await disableHook(tabId, !realNavigation);
-        if (realNavigation && (await getAutoSuppressedTabId()) === tabId) await setAutoSuppressedTabId(null);
-      } else {
-        // Same document: re-apply the hook's stored settings to the new media element.
+      const sameDocument = !realNavigation && (await canReachPageHook(tabId));
+      if (sameDocument) {
+        // Re-apply the hook's stored settings to the new media element.
         await chrome.tabs.sendMessage(tabId, { type: 'REAPPLY_AUDIO' }).catch(() => undefined);
+      } else if ((await getSettings()).autoEnable) {
+        // Auto-enable owns this tab: keep the logical state on and re-inject on complete.
+        await clearHookSession(tabId);
+        await updateBadge(tabId, changeInfo.url);
+      } else {
+        await disableHook(tabId, !realNavigation);
       }
     }
     if (changeInfo.url) await updateBadge(tabId, changeInfo.url);
