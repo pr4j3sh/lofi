@@ -211,17 +211,6 @@ h2 {
   gap: 20px;
   margin-top: 28px;
 }
-.creator-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: #8c84a3;
-  font-size: 12px;
-  text-decoration: none;
-  transition: color 150ms ease;
-}
-.creator-links a:hover { color: #e2d5ff; }
-.creator-links a:focus-visible { outline: 2px solid #b9a2ee; outline-offset: 3px; border-radius: 6px; }
 
 @media (max-width: 520px) {
   .page { padding: 36px 16px 56px; }

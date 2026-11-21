@@ -4,6 +4,18 @@
   --lofi-track: #3b354b;
 }
 
+.creator-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #8c84a3;
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+.creator-links a:hover { color: #e2d5ff; }
+.creator-links a:focus-visible { outline: 2px solid #b9a2ee; outline-offset: 3px; border-radius: 6px; }
+
 .site-icon {
   display: inline-flex;
   align-items: center;

@@ -1,5 +1,6 @@
 interface CreatorLinksProps {
   className?: string;
+  iconOnly?: boolean;
 }
 
 function GlobeIcon() {
@@ -20,16 +21,28 @@ function GitHubIcon() {
   );
 }
 
-export default function CreatorLinks({ className = '' }: CreatorLinksProps) {
+export default function CreatorLinks({ className = '', iconOnly = false }: CreatorLinksProps) {
   return (
     <div className={`creator-links${className ? ` ${className}` : ''}`}>
-      <a href="https://pr4j3sh.github.io/pr4j3sh/" target="_blank" rel="noreferrer" aria-label="pr4j3sh website">
+      <a
+        href="https://pr4j3sh.github.io/pr4j3sh/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="pr4j3sh website"
+        title="pr4j3sh website"
+      >
         <GlobeIcon />
-        <span>pr4j3sh</span>
+        {!iconOnly && <span>pr4j3sh</span>}
       </a>
-      <a href="https://github.com/pr4j3sh/lofi" target="_blank" rel="noreferrer" aria-label="lofi on GitHub">
+      <a
+        href="https://github.com/pr4j3sh/lofi"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="lofi on GitHub"
+        title="lofi on GitHub"
+      >
         <GitHubIcon />
-        <span>GitHub</span>
+        {!iconOnly && <span>GitHub</span>}
       </a>
     </div>
   );
