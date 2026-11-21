@@ -18,6 +18,14 @@ Then open `chrome://extensions`, enable **Developer mode**, click **Load unpacke
 
 For development, `npm run dev` rebuilds on change; reload the extension in `chrome://extensions` after each rebuild.
 
+## Releasing
+
+1. Bump `version` in both `manifest.json` and `package.json` to the same value.
+2. Commit and push the version change.
+3. Create and push a matching tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+4. `.github/workflows/release.yml` verifies the tag matches the extension version, builds the project, and attaches `lofi-X.Y.Z.zip` to a GitHub Release.
+5. Download that zip from GitHub Releases and upload it manually in the Chrome Web Store dashboard.
+
 ## Manual test checklist
 
 1. Open `chrome-extension://<extension-id>/test-audio.html` from the extension details page. It generates a local tone with no network requests and is always treated as supported.

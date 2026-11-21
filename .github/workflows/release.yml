@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Verify tag matches extension version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST="$(node -p "require('./manifest.json').version")"
+          PACKAGE="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG manifest=$MANIFEST package=$PACKAGE"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::Tag v$TAG does not match manifest.json version $MANIFEST"
+            exit 1
+          fi
+          if [ "$PACKAGE" != "$MANIFEST" ]; then
+            echo "::error::package.json version $PACKAGE does not match manifest.json version $MANIFEST"
+            exit 1
+          fi
+          echo "version=$MANIFEST" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package extension
+        run: |
+          ZIP="lofi-${{ steps.version.outputs.version }}.zip"
+          (cd dist && zip -r "../$ZIP" .)
+          ls -lh "$ZIP"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          files: lofi-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
