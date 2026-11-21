@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import RangeSlider from '../components/RangeSlider';
 import { hasPageHookPermission, requestPageHookPermission } from '../sites/page-hook';
 import { addCustomSite, normalizeDomain, removeSite, setSiteEnabled } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
@@ -132,8 +133,11 @@ export default function App() {
 
   return (
     <div className="page">
-      <header>
-        <h1>lofi settings</h1>
+      <header className="page-header">
+        <div className="brand-line">
+          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+          <h1>lofi <span>settings</span></h1>
+        </div>
         <p>Quiet defaults for your listening.</p>
       </header>
 
@@ -141,67 +145,63 @@ export default function App() {
 
       <section>
         <h2>Activation</h2>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={settings.autoEnable}
-            onChange={(event) => void patch({ autoEnable: event.target.checked })}
-          />
-          <span>
-            Automatically enable lofi on supported websites
+        <label className="toggle-row">
+          <span className="toggle-copy">
+            <span className="toggle-title">Automatically enable lofi on supported websites</span>
             <small>Sites with site access start automatically. Others keep the one-click prompt.</small>
+          </span>
+          <span className="toggle">
+            <input
+              type="checkbox"
+              checked={settings.autoEnable}
+              onChange={(event) => void patch({ autoEnable: event.target.checked })}
+              aria-label="Automatically enable lofi on supported websites"
+            />
+            <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
           </span>
         </label>
       </section>
 
       <section>
         <h2>Defaults</h2>
-        <label className="field">
-          <span>Playback speed ({settings.playbackSpeed.toFixed(2)}x)</span>
-          <input
-            type="range"
-            min={SPEED_MIN}
-            max={SPEED_MAX}
-            step={0.01}
-            value={settings.playbackSpeed}
-            onChange={(event) => void patch({ playbackSpeed: Number(event.target.value) })}
-          />
-        </label>
-        <label className="field">
-          <span>Reverb ({Math.round(settings.reverbMix * 100)}%)</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={settings.reverbMix}
-            onChange={(event) => void patch({ reverbMix: Number(event.target.value) })}
-          />
-        </label>
-        <label className="field">
-          <span>Bass ({settings.bassGain >= 0 ? '+' : ''}{settings.bassGain.toFixed(0)} dB)</span>
-          <input
-            type="range"
-            min={-12}
-            max={12}
-            step={1}
-            value={settings.bassGain}
-            onChange={(event) => void patch({ bassGain: Number(event.target.value) })}
-          />
-        </label>
-        <label className="field">
-          <span>Treble ({settings.trebleGain >= 0 ? '+' : ''}{settings.trebleGain.toFixed(0)} dB)</span>
-          <input
-            type="range"
-            min={-12}
-            max={12}
-            step={1}
-            value={settings.trebleGain}
-            onChange={(event) => void patch({ trebleGain: Number(event.target.value) })}
-          />
-        </label>
-        <label className="field">
-          <span>Default preset</span>
+        <RangeSlider
+          label="Playback speed"
+          value={settings.playbackSpeed}
+          min={SPEED_MIN}
+          max={SPEED_MAX}
+          step={0.01}
+          display={`${settings.playbackSpeed.toFixed(2)}x`}
+          onChange={(value) => void patch({ playbackSpeed: value })}
+        />
+        <RangeSlider
+          label="Reverb"
+          value={settings.reverbMix}
+          min={0}
+          max={1}
+          step={0.01}
+          display={`${Math.round(settings.reverbMix * 100)}%`}
+          onChange={(value) => void patch({ reverbMix: value })}
+        />
+        <RangeSlider
+          label="Bass"
+          value={settings.bassGain}
+          min={-12}
+          max={12}
+          step={1}
+          display={`${settings.bassGain >= 0 ? '+' : ''}${settings.bassGain.toFixed(0)} dB`}
+          onChange={(value) => void patch({ bassGain: value })}
+        />
+        <RangeSlider
+          label="Treble"
+          value={settings.trebleGain}
+          min={-12}
+          max={12}
+          step={1}
+          display={`${settings.trebleGain >= 0 ? '+' : ''}${settings.trebleGain.toFixed(0)} dB`}
+          onChange={(value) => void patch({ trebleGain: value })}
+        />
+        <label className="select-field">
+          <span className="select-label">Default preset</span>
           <select
             value={settings.selectedPreset}
             onChange={(event) => {
@@ -215,7 +215,7 @@ export default function App() {
           </select>
         </label>
         {!isDefaultSettings(settings) && (
-          <button type="button" className="reset-button" onClick={() => void resetToDefaults()}>
+          <button type="button" className="button button-ghost reset-button" onClick={() => void resetToDefaults()}>
             Reset to defaults
           </button>
         )}
@@ -224,33 +224,48 @@ export default function App() {
       <section>
         <h2>Supported websites</h2>
         <ul className="site-list">
-          {settings.sites.map((site) => (
-            <li key={site.domain}>
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={site.enabled}
-                  onChange={(event) => void handleSiteToggle(site, event.target.checked)}
-                />
-                <span>
-                  {site.name}
-                  <small>{site.domain}</small>
-                </span>
-              </label>
-              <div className="site-actions">
-                {site.domain !== 'self' && !permissions[site.domain] && (
-                  <button type="button" onClick={() => void grantSite(site.domain)}>
-                    Allow auto
-                  </button>
-                )}
-                {site.custom && (
-                  <button type="button" className="danger" onClick={() => patchSites(removeSite(settings.sites, site.domain))}>
-                    Remove
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
+          {settings.sites.map((site) => {
+            const canAuto = site.domain !== 'self' && permissions[site.domain] === true;
+            const status = site.domain === 'self' ? 'Test' : canAuto ? 'Auto' : 'Manual';
+            return (
+              <li className="site-row" key={site.domain}>
+                <label className="toggle-row site-toggle">
+                  <span className="toggle-copy">
+                    <span className="site-name">
+                      {site.name}
+                      <span className={`status-pill ${canAuto ? 'auto' : ''}`}>{status}</span>
+                    </span>
+                    <small>{site.domain}</small>
+                  </span>
+                  <span className="toggle toggle-small">
+                    <input
+                      type="checkbox"
+                      checked={site.enabled}
+                      onChange={(event) => void handleSiteToggle(site, event.target.checked)}
+                      aria-label={`Enable lofi on ${site.name}`}
+                    />
+                    <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
+                  </span>
+                </label>
+                <div className="site-actions">
+                  {site.domain !== 'self' && !canAuto && (
+                    <button type="button" className="button button-subtle" onClick={() => void grantSite(site.domain)}>
+                      Allow auto
+                    </button>
+                  )}
+                  {site.custom && (
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      onClick={() => patchSites(removeSite(settings.sites, site.domain))}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
         <div className="add-site">
           <input
@@ -261,8 +276,11 @@ export default function App() {
             onKeyDown={(event) => {
               if (event.key === 'Enter') void handleAdd();
             }}
+            aria-label="Website domain"
           />
-          <button type="button" onClick={handleAdd}>Add website</button>
+          <button type="button" className="button button-primary" onClick={() => void handleAdd()}>
+            Add website
+          </button>
         </div>
       </section>
     </div>

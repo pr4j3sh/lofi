@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-interface ControlSliderProps {
+interface RangeSliderProps {
   label: string;
   value: number;
   min: number;
@@ -10,7 +10,7 @@ interface ControlSliderProps {
   onChange: (value: number) => void;
 }
 
-export default function ControlSlider({ label, value, min, max, step, display, onChange }: ControlSliderProps) {
+export default function RangeSlider({ label, value, min, max, step, display, onChange }: RangeSliderProps) {
   const progress = ((value - min) / (max - min)) * 100;
   return (
     <div className="control">

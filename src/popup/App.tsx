@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import ControlSlider from './components/ControlSlider';
+import RangeSlider from '../components/RangeSlider';
 import ErrorBanner from './components/ErrorBanner';
 import PresetPicker from './components/PresetPicker';
 import SettingsIcon from './components/SettingsIcon';
@@ -313,7 +313,7 @@ export default function App() {
 
       <ErrorBanner message={error ?? status.error} />
 
-      <ControlSlider
+      <RangeSlider
         label="Playback speed"
         value={settings.playbackSpeed}
         min={SPEED_MIN}
@@ -322,7 +322,7 @@ export default function App() {
         display={`${settings.playbackSpeed.toFixed(2)}x`}
         onChange={(playbackSpeed) => void patchSettings({ playbackSpeed })}
       />
-      <ControlSlider
+      <RangeSlider
         label="Reverb"
         value={settings.reverbMix}
         min={0}
