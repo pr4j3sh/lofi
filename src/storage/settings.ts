@@ -104,6 +104,14 @@ export async function getSettings(): Promise<LofiSettings> {
   return settings;
 }
 
+/** Applies a domain's saved overrides to the global defaults. */
+export function settingsForDomain(settings: LofiSettings, domain: string | null | undefined): LofiSettings {
+  if (!domain) return settings;
+  const site = settings.siteSettings[domain];
+  if (!site) return settings;
+  return { ...settings, playbackSpeed: site.playbackSpeed, reverbMix: site.reverbMix };
+}
+
 /** Patching only supplied keys avoids clobbering user settings during upgrades. */
 export async function updateSettings(patch: Partial<LofiSettings>): Promise<LofiSettings> {
   await chrome.storage.local.set(patch);

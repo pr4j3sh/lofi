@@ -1,11 +1,13 @@
+import { isHookableDomain } from '../sites/hookable-sites';
 import { findSite } from '../sites/site-manager';
-import { getSettings } from '../storage/settings';
+import { getSettings, settingsForDomain } from '../storage/settings';
 import { errorMessage, handleMessage, sendMessage } from '../utils/messaging';
 import type { EngineStatus, ExtensionMessage, LofiSettings, MessageResponse, StartCapturePayload } from '../types';
 
 const OFFSCREEN_PATH = 'offscreen.html';
 const NOT_RUNNING: EngineStatus = { running: false, tabId: null, error: null };
 let creatingOffscreen: Promise<void> | null = null;
+const autoEnabling = new Set<number>();
 
 async function ensureOffscreen(): Promise<void> {
   const url = chrome.runtime.getURL(OFFSCREEN_PATH);
@@ -53,6 +55,24 @@ async function setHookTabId(tabId: number | null): Promise<void> {
   await chrome.storage.session.set({ hookTabId: tabId });
 }
 
+async function getAutoHookTabId(): Promise<number | null> {
+  const session = await chrome.storage.session.get({ autoHookTabId: null });
+  return typeof session.autoHookTabId === 'number' ? session.autoHookTabId : null;
+}
+
+async function setAutoHookTabId(tabId: number | null): Promise<void> {
+  await chrome.storage.session.set({ autoHookTabId: tabId });
+}
+
+async function getAutoSuppressedTabId(): Promise<number | null> {
+  const session = await chrome.storage.session.get({ autoSuppressedTabId: null });
+  return typeof session.autoSuppressedTabId === 'number' ? session.autoSuppressedTabId : null;
+}
+
+async function setAutoSuppressedTabId(tabId: number | null): Promise<void> {
+  await chrome.storage.session.set({ autoSuppressedTabId: tabId });
+}
+
 function broadcastStatus(status: EngineStatus): void {
   void sendMessage({ type: 'STATUS_CHANGED', target: 'popup', payload: status });
 }
@@ -80,13 +100,16 @@ async function canReachPageHook(tabId: number): Promise<boolean> {
   }
 }
 
-async function disableHook(tabId: number): Promise<void> {
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: 'APPLY_AUDIO', settings: await getSettings(), enabled: false });
-  } catch {
-    // The old page context may already be gone.
+async function disableHook(tabId: number, notifyPage = true): Promise<void> {
+  if (notifyPage) {
+    try {
+      await chrome.tabs.sendMessage(tabId, { type: 'APPLY_AUDIO', settings: await getSettings(), enabled: false });
+    } catch {
+      // The old page context may already be gone.
+    }
   }
   if ((await getHookTabId()) === tabId) await setHookTabId(null);
+  if ((await getAutoHookTabId()) === tabId) await setAutoHookTabId(null);
   broadcastHookStatus(tabId, false, null);
   await updateBadge(tabId);
 }
@@ -104,9 +127,46 @@ async function updateBadge(tabId: number | null, url?: string): Promise<void> {
   if (text) await chrome.action.setBadgeBackgroundColor({ tabId, color: '#7c6aa4' });
 }
 
+async function maybeAutoEnableHook(tabId: number, url: string): Promise<void> {
+  if (autoEnabling.has(tabId)) return;
+  autoEnabling.add(tabId);
+  try {
+    const settings = await getSettings();
+    if (!settings.autoEnable) return;
+    const site = findSite(url, settings.sites);
+    if (!site || !isHookableDomain(site.domain)) return;
+
+    const captureTabId = await getSessionTabId();
+    if ((captureTabId !== null && captureTabId !== tabId) || (await getHookTabId()) === tabId) return;
+    if ((await getAutoSuppressedTabId()) === tabId) return;
+
+    await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['page-hook.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', files: ['content.js'] });
+    const response = (await chrome.tabs.sendMessage(tabId, {
+      type: 'APPLY_AUDIO',
+      settings: settingsForDomain(settings, site.domain),
+      enabled: true,
+    })) as { ok?: boolean } | undefined;
+    if (!response?.ok) throw new Error('The page did not confirm audio processing');
+
+    await setHookTabId(tabId);
+    await setAutoHookTabId(tabId);
+    await setAutoSuppressedTabId(null);
+    await updateBadge(tabId, url);
+    broadcastHookStatus(tabId, true, null);
+  } catch (cause) {
+    broadcastHookStatus(tabId, false, errorMessage(cause));
+  } finally {
+    autoEnabling.delete(tabId);
+  }
+}
+
 async function refreshActiveTabBadge(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (typeof tab?.id === 'number') await updateBadge(tab.id, tab.url);
+  if (typeof tab?.id === 'number') {
+    await updateBadge(tab.id, tab.url);
+    if (tab.url) await maybeAutoEnableHook(tab.id, tab.url);
+  }
 }
 
 async function ensureNoConflictingCapture(tabId: number): Promise<void> {
@@ -142,8 +202,15 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse): b
     const active = incoming.payload?.active === true;
     const error = incoming.payload?.error ?? null;
     void (async () => {
-      if (active) await setHookTabId(tabId);
-      else if ((await getHookTabId()) === tabId) await setHookTabId(null);
+      if (active) {
+        await setHookTabId(tabId);
+        if ((await getAutoSuppressedTabId()) === tabId) await setAutoSuppressedTabId(null);
+      } else if ((await getHookTabId()) === tabId) {
+        await setHookTabId(null);
+        if ((await getAutoHookTabId()) === tabId) await setAutoHookTabId(null);
+        // A manual off should stay off until the user navigates again.
+        if ((await getSettings()).autoEnable) await setAutoSuppressedTabId(tabId);
+      }
       await updateBadge(tabId);
       broadcastHookStatus(tabId, active, error);
     })();
@@ -235,6 +302,8 @@ chrome.tabs.onRemoved.addListener((tabId) => {
       await setHookTabId(null);
       broadcastHookStatus(tabId, false, null);
     }
+    if ((await getAutoHookTabId()) === tabId) await setAutoHookTabId(null);
+    if ((await getAutoSuppressedTabId()) === tabId) await setAutoSuppressedTabId(null);
   })();
 });
 
@@ -245,7 +314,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       // the document. Only a real navigation should tear down the page hook.
       const realNavigation = changeInfo.status === 'loading' || changeInfo.status === 'complete';
       if (realNavigation || !(await canReachPageHook(tabId))) {
-        await disableHook(tabId);
+        await disableHook(tabId, !realNavigation);
+        if (realNavigation && (await getAutoSuppressedTabId()) === tabId) await setAutoSuppressedTabId(null);
       } else {
         // Same document: re-apply the hook's stored settings to the new media element.
         await chrome.tabs.sendMessage(tabId, { type: 'REAPPLY_AUDIO' }).catch(() => undefined);
@@ -253,6 +323,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     }
     if (changeInfo.url) await updateBadge(tabId, changeInfo.url);
     else if ((await getSessionTabId()) === tabId || (await getHookTabId()) === tabId) await updateBadge(tabId);
+
+    if (changeInfo.status === 'complete') {
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      if (tab?.url) await maybeAutoEnableHook(tabId, tab.url);
+    }
   })();
 });
 
@@ -260,6 +335,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
   void (async () => {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     await updateBadge(tabId, tab?.url);
+    if (tab?.url) await maybeAutoEnableHook(tabId, tab.url);
   })();
 });
 
@@ -272,9 +348,17 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && ('autoEnable' in changes || 'sites' in changes)) {
-    void refreshActiveTabBadge();
-  }
+  void (async () => {
+    if (area !== 'local') return;
+    if ('autoEnable' in changes && changes.autoEnable.newValue === false) {
+      const hookTabId = await getHookTabId();
+      if (hookTabId !== null && (await getAutoHookTabId()) === hookTabId) {
+        await disableHook(hookTabId);
+        await setAutoSuppressedTabId(null);
+      }
+    }
+    if ('autoEnable' in changes || 'sites' in changes) await refreshActiveTabBadge();
+  })();
 });
 
 chrome.tabCapture.onStatusChanged.addListener((info) => {

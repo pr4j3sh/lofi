@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import ControlSlider from './components/ControlSlider';
 import ErrorBanner from './components/ErrorBanner';
 import PresetPicker from './components/PresetPicker';
+import { isHookableDomain } from '../sites/hookable-sites';
 import { findSite } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
-import { getSettings, updateSettings } from '../storage/settings';
+import { getSettings, settingsForDomain, updateSettings } from '../storage/settings';
 import { errorMessage, sendMessage } from '../utils/messaging';
 import { isExtensionMessage, type EngineStatus, type LofiSettings } from '../types';
 
 const IDLE_STATUS: EngineStatus = { running: false, tabId: null, error: null };
-const HOOKABLE_DOMAIN = 'music.youtube.com';
 
 function isDefaultSettings(settings: LofiSettings): boolean {
   return (
@@ -19,13 +19,6 @@ function isDefaultSettings(settings: LofiSettings): boolean {
     Math.abs(settings.trebleGain - DEFAULT_SETTINGS.trebleGain) < 0.001 &&
     settings.selectedPreset === DEFAULT_SETTINGS.selectedPreset
   );
-}
-
-function withSiteSettings(settings: LofiSettings, domain: string | null): LofiSettings {
-  if (!domain) return settings;
-  const site = settings.siteSettings[domain];
-  if (!site) return settings;
-  return { ...settings, playbackSpeed: site.playbackSpeed, reverbMix: site.reverbMix };
 }
 
 export default function App() {
@@ -55,11 +48,11 @@ export default function App() {
         activeTabId.current = tab?.id ?? null;
         const site = tab?.url ? findSite(tab.url, loaded.sites) : null;
         activeDomain.current = site?.domain ?? null;
-        const canUseHook = site?.domain === HOOKABLE_DOMAIN;
+        const canUseHook = isHookableDomain(site?.domain);
         setHookable(canUseHook);
         setSupported(site !== null);
         setSiteName(site?.name ?? (tab?.url ? 'Unsupported website' : 'Unknown website'));
-        setSettings(withSiteSettings(loaded, activeDomain.current));
+        setSettings(settingsForDomain(loaded, activeDomain.current));
 
         if (canUseHook && typeof tab?.id === 'number') {
           const pageStatus = (await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_STATUS' }).catch(() => null)) as
@@ -102,7 +95,7 @@ export default function App() {
     };
     const onStorage = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
       if (area === 'local' && Object.keys(changes).length > 0) {
-        void getSettings().then((loaded) => setSettings(withSiteSettings(loaded, activeDomain.current)));
+        void getSettings().then((loaded) => setSettings(settingsForDomain(loaded, activeDomain.current)));
       }
     };
     chrome.runtime.onMessage.addListener(onStatus);
@@ -129,14 +122,14 @@ export default function App() {
         };
       }
       const updated = await updateSettings(fullPatch);
-      setSettings(withSiteSettings(updated, domain));
+      setSettings(settingsForDomain(updated, domain));
       const response = await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });
       if (!response.ok) setError(response.error ?? 'Could not apply audio settings');
       if (hookActive && activeTabId.current !== null) {
         await chrome.tabs
           .sendMessage(activeTabId.current, {
             type: 'APPLY_AUDIO',
-            settings: withSiteSettings(await getSettings(), domain),
+            settings: settingsForDomain(await getSettings(), domain),
             enabled: true,
           })
           .catch(() => undefined);
@@ -249,13 +242,13 @@ export default function App() {
         selectedPreset: DEFAULT_SETTINGS.selectedPreset,
         siteSettings,
       });
-      setSettings(withSiteSettings(updated, domain));
+      setSettings(settingsForDomain(updated, domain));
       await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });
       if (hookActive && activeTabId.current !== null) {
         await chrome.tabs
           .sendMessage(activeTabId.current, {
             type: 'APPLY_AUDIO',
-            settings: withSiteSettings(updated, domain),
+            settings: settingsForDomain(updated, domain),
             enabled: true,
           })
           .catch(() => undefined);

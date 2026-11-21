@@ -28,9 +28,11 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 6. Turn lofi off; the tab's original audio returns and no audio is duplicated.
 7. On YouTube Music, lofi injects a page-level hook that uses the player's native playback rate for a cleaner tape-style slowdown. Spotify and custom domains use the tabCapture path.
 8. While playing on YouTube Music, press next a few times. Processing stays active and follows the new track without turning off.
-9. Turn on auto-enable in Settings, then switch tabs. Supported tabs show a ready badge, and the popup shows a one-click prompt.
-10. Add a custom domain in Settings, reload the extension, and confirm it persists.
-11. Close the captured tab while playing; processing stops and the UI no longer reports active.
+9. Turn on auto-enable in Settings and open YouTube Music. Processing starts automatically with no popup click.
+10. Turn lofi off manually on YouTube Music; it stays off until you navigate to the page again.
+11. Spotify and custom domains still show a one-click prompt because Chrome requires a user gesture for tab capture.
+12. Add a custom domain in Settings, reload the extension, and confirm it persists.
+13. Close the captured tab while playing; processing stops and the UI no longer reports active.
 
 ## Presets
 
@@ -58,5 +60,5 @@ The conservative wet/dry scaling, limiter settings and slowed preset were inform
 
 - Slowdown is tape-style: it lowers pitch along with speed. Pitch-preserving time stretching is not implemented.
 - Only one tab can be processed at a time.
-- Automatic activation cannot start capture on its own because Chrome requires a user gesture. With auto-enable on, supported sites show a ready badge and the popup shows a clear one-click prompt; an already injected YouTube Music hook keeps running across track changes.
+- YouTube Music uses a page hook and a narrow host permission, so auto-enable can start processing without a popup click. Spotify and custom sites use tab capture, which Chrome only allows after a user gesture; those still need one click.
 - Audio behavior was implemented against current Chrome MV3 APIs; automated browser verification was not available in this environment.

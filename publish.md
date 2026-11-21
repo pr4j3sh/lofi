@@ -70,8 +70,9 @@ Be ready to justify each permission:
 - `activeTab` — user-gesture access to the current tab.
 - `scripting` — injects the page hook on supported players such as YouTube Music.
 - `storage` — persists settings and custom sites.
+- Host access to `https://music.youtube.com/*` — injects the page hook automatically so auto-enable works without a popup click.
 
-If a reviewer asks why both `tabCapture` and `scripting` are present: `scripting` enables a cleaner native-speed page hook on YouTube Music; `tabCapture` remains the generic fallback for other sites.
+If a reviewer asks why both `tabCapture` and `scripting` are present: `scripting` enables a cleaner native-speed page hook on YouTube Music; `tabCapture` remains the generic fallback for other sites. The host permission is limited to YouTube Music and is only used for local audio processing.
 
 ## 5. Distribution and submission
 
@@ -97,4 +98,4 @@ Features:
 - Simple EQ and gentle limiting.
 - Per-site settings and custom website support.
 - Audio keeps processing when the popup is closed.
-- Auto-enable marks supported sites as ready with a clear one-click prompt.
+- Auto-enable starts processing automatically on YouTube Music; other sites show a clear one-click prompt.
