@@ -49,7 +49,7 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 | --- | ---: | ---: |
 | Slowed + Reverb (default) | 0.80x | 40% |
 | Dreamy | 0.85x | 35% |
-| Rainy Night | 0.80x | 40% |
+| Rainy Night | 0.75x | 55% |
 | Vinyl | 0.90x | 22% |
 | Deep Focus | 0.95x | 15% |
 | Original | 1.00x | 0% |

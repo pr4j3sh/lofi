@@ -149,11 +149,3 @@ body {
 .reset-button:hover { border-color: #6b5c93; color: #e2d5ff; }
 .reset-button:focus-visible { outline: 2px solid #b9a2ee; outline-offset: 2px; }
 
-.popup-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
-}
-.popup-footer a { padding: 4px; border-radius: 8px; }

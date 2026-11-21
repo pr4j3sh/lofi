@@ -5,7 +5,7 @@ import type { LofiSettings, Preset } from '../types';
 export const PRESETS: Preset[] = [
   { id: 'slowed', name: 'Slowed + Reverb', playbackSpeed: 0.8, reverbMix: 0.4 },
   { id: 'dreamy', name: 'Dreamy', playbackSpeed: 0.85, reverbMix: 0.35 },
-  { id: 'rainy', name: 'Rainy Night', playbackSpeed: 0.8, reverbMix: 0.4 },
+  { id: 'rainy', name: 'Rainy Night', playbackSpeed: 0.75, reverbMix: 0.55 },
   { id: 'vinyl', name: 'Vinyl', playbackSpeed: 0.9, reverbMix: 0.22 },
   { id: 'focus', name: 'Deep Focus', playbackSpeed: 0.95, reverbMix: 0.15 },
   { id: 'original', name: 'Original', playbackSpeed: 1, reverbMix: 0 },

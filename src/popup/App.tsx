@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import CreatorLinks from '../components/CreatorLinks';
 import RangeSlider from '../components/RangeSlider';
 import SiteIcon from '../components/SiteIcon';
 import ErrorBanner from './components/ErrorBanner';
@@ -343,7 +342,6 @@ export default function App() {
         </button>
       )}
 
-      <CreatorLinks iconOnly className="popup-footer" />
     </div>
   );
 }

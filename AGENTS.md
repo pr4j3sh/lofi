@@ -329,13 +329,14 @@ The UI should feel like a small music utility, not an administration dashboard.
 
 Implement these initial presets:
 
-| Preset      | Speed | Reverb |
-| ----------- | ----: | -----: |
-| Dreamy      | 0.85x |    65% |
-| Rainy Night | 0.80x |    80% |
-| Vinyl       | 0.90x |    45% |
-| Deep Focus  | 0.95x |    30% |
-| Original    | 1.00x |     0% |
+| Preset                | Speed | Reverb |
+| --------------------- | ----: | -----: |
+| Slowed + Reverb       | 0.80x |    40% |
+| Dreamy                | 0.85x |    35% |
+| Rainy Night           | 0.75x |    55% |
+| Vinyl                 | 0.90x |    22% |
+| Deep Focus            | 0.95x |    15% |
+| Original              | 1.00x |     0% |
 
 Treat these as initial defaults. Keep preset definitions centralized and configurable.
 

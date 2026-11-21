@@ -1,6 +1,5 @@
 interface CreatorLinksProps {
   className?: string;
-  iconOnly?: boolean;
 }
 
 function GlobeIcon() {
@@ -21,7 +20,7 @@ function GitHubIcon() {
   );
 }
 
-export default function CreatorLinks({ className = '', iconOnly = false }: CreatorLinksProps) {
+export default function CreatorLinks({ className = '' }: CreatorLinksProps) {
   return (
     <div className={`creator-links${className ? ` ${className}` : ''}`}>
       <a
@@ -32,7 +31,7 @@ export default function CreatorLinks({ className = '', iconOnly = false }: Creat
         title="pr4j3sh website"
       >
         <GlobeIcon />
-        {!iconOnly && <span>pr4j3sh</span>}
+        <span>pr4j3sh</span>
       </a>
       <a
         href="https://github.com/pr4j3sh/lofi"
@@ -42,7 +41,7 @@ export default function CreatorLinks({ className = '', iconOnly = false }: Creat
         title="lofi on GitHub"
       >
         <GitHubIcon />
-        {!iconOnly && <span>GitHub</span>}
+        <span>GitHub</span>
       </a>
     </div>
   );

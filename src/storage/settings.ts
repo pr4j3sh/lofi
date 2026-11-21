@@ -68,7 +68,9 @@ function normalizeSettings(input: Partial<LofiSettings>): LofiSettings {
   };
 }
 
-/** Retired preset values; only used to upgrade users who never touched the sliders. */
+const SETTINGS_VERSION = 3;
+
+/** Retired v1 preset values; only used to upgrade users who never touched the sliders. */
 const LEGACY_PRESET_VALUES: Record<string, { playbackSpeed: number; reverbMix: number }> = {
   dreamy: { playbackSpeed: 0.85, reverbMix: 0.65 },
   rainy: { playbackSpeed: 0.8, reverbMix: 0.8 },
@@ -76,10 +78,13 @@ const LEGACY_PRESET_VALUES: Record<string, { playbackSpeed: number; reverbMix: n
   focus: { playbackSpeed: 0.95, reverbMix: 0.3 },
 };
 
-function matchesLegacy(settings: LofiSettings, legacy: { playbackSpeed: number; reverbMix: number }): boolean {
+/** Rainy Night used to share Slowed + Reverb's values before v3. */
+const RAINY_V2_VALUES = { playbackSpeed: 0.8, reverbMix: 0.4 };
+
+function matchesPresetValues(settings: LofiSettings, values: { playbackSpeed: number; reverbMix: number }): boolean {
   return (
-    Math.abs(settings.playbackSpeed - legacy.playbackSpeed) < 0.001 &&
-    Math.abs(settings.reverbMix - legacy.reverbMix) < 0.001
+    Math.abs(settings.playbackSpeed - values.playbackSpeed) < 0.001 &&
+    Math.abs(settings.reverbMix - values.reverbMix) < 0.001
   );
 }
 
@@ -90,7 +95,7 @@ export async function getSettings(): Promise<LofiSettings> {
   if (stored.lofiSettingsVersion !== 2) {
     const legacy = LEGACY_PRESET_VALUES[settings.selectedPreset];
     const preset = PRESETS.find((candidate) => candidate.id === settings.selectedPreset);
-    if (legacy && preset && matchesLegacy(settings, legacy)) {
+    if (legacy && preset && matchesPresetValues(settings, legacy)) {
       settings.playbackSpeed = preset.playbackSpeed;
       settings.reverbMix = preset.reverbMix;
     }
@@ -101,6 +106,23 @@ export async function getSettings(): Promise<LofiSettings> {
       selectedPreset: settings.selectedPreset,
     });
   }
+
+  if (stored.lofiSettingsVersion !== SETTINGS_VERSION) {
+    if (settings.selectedPreset === 'rainy' && matchesPresetValues(settings, RAINY_V2_VALUES)) {
+      const rainy = PRESETS.find((candidate) => candidate.id === 'rainy');
+      if (rainy) {
+        settings.playbackSpeed = rainy.playbackSpeed;
+        settings.reverbMix = rainy.reverbMix;
+      }
+    }
+    await chrome.storage.local.set({
+      lofiSettingsVersion: SETTINGS_VERSION,
+      playbackSpeed: settings.playbackSpeed,
+      reverbMix: settings.reverbMix,
+      selectedPreset: settings.selectedPreset,
+    });
+  }
+
   return settings;
 }
 
