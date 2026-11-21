@@ -23,6 +23,11 @@
       sendResponse({ ok: true });
       return true;
     }
+    if (request.type === 'REAPPLY_AUDIO') {
+      window.postMessage({ channel: CHANNEL, type: 'REAPPLY' }, '*');
+      sendResponse({ ok: true });
+      return true;
+    }
     if (request.type === 'GET_PAGE_STATUS') {
       window.postMessage({ channel: CHANNEL, type: 'GET_STATE' }, '*');
       sendResponse({ ...state });

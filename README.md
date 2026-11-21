@@ -27,8 +27,10 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 5. Close the popup; audio keeps playing (the graph lives in an offscreen document).
 6. Turn lofi off; the tab's original audio returns and no audio is duplicated.
 7. On YouTube Music, lofi injects a page-level hook that uses the player's native playback rate for a cleaner tape-style slowdown. Spotify and custom domains use the tabCapture path.
-8. Add a custom domain in Settings, reload the extension, and confirm it persists.
-9. Close the captured tab while playing; processing stops and the UI no longer reports active.
+8. While playing on YouTube Music, press next a few times. Processing stays active and follows the new track without turning off.
+9. Turn on auto-enable in Settings, then switch tabs. Supported tabs show a ready badge, and the popup shows a one-click prompt.
+10. Add a custom domain in Settings, reload the extension, and confirm it persists.
+11. Close the captured tab while playing; processing stops and the UI no longer reports active.
 
 ## Presets
 
@@ -56,5 +58,5 @@ The conservative wet/dry scaling, limiter settings and slowed preset were inform
 
 - Slowdown is tape-style: it lowers pitch along with speed. Pitch-preserving time stretching is not implemented.
 - Only one tab can be processed at a time.
-- Automatic activation cannot start capture on its own because Chrome requires a user gesture; it marks supported sites as available and the popup still needs one click.
+- Automatic activation cannot start capture on its own because Chrome requires a user gesture. With auto-enable on, supported sites show a ready badge and the popup shows a clear one-click prompt; an already injected YouTube Music hook keeps running across track changes.
 - Audio behavior was implemented against current Chrome MV3 APIs; automated browser verification was not available in this environment.

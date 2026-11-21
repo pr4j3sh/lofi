@@ -71,16 +71,42 @@ async function applySettingsToHook(settings: LofiSettings): Promise<void> {
   }
 }
 
+async function canReachPageHook(tabId: number): Promise<boolean> {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_STATUS' });
+    return response !== undefined && response !== null;
+  } catch {
+    return false;
+  }
+}
+
+async function disableHook(tabId: number): Promise<void> {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'APPLY_AUDIO', settings: await getSettings(), enabled: false });
+  } catch {
+    // The old page context may already be gone.
+  }
+  if ((await getHookTabId()) === tabId) await setHookTabId(null);
+  broadcastHookStatus(tabId, false, null);
+  await updateBadge(tabId);
+}
+
 async function updateBadge(tabId: number | null, url?: string): Promise<void> {
   if (tabId === null) return;
   const settings = await getSettings();
   const sessionTabId = await getSessionTabId();
   const hookTabId = await getHookTabId();
-  const supported = url ? findSite(url, settings.sites) !== null : false;
+  const resolvedUrl = url ?? (await chrome.tabs.get(tabId).then((tab) => tab.url).catch(() => undefined));
+  const supported = resolvedUrl ? findSite(resolvedUrl, settings.sites) !== null : false;
   const running = sessionTabId === tabId || hookTabId === tabId;
   const text = running ? '♪' : supported && settings.autoEnable ? '•' : '';
   await chrome.action.setBadgeText({ tabId, text });
   if (text) await chrome.action.setBadgeBackgroundColor({ tabId, color: '#7c6aa4' });
+}
+
+async function refreshActiveTabBadge(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (typeof tab?.id === 'number') await updateBadge(tab.id, tab.url);
 }
 
 async function ensureNoConflictingCapture(tabId: number): Promise<void> {
@@ -215,18 +241,40 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   void (async () => {
     if (changeInfo.url && (await getHookTabId()) === tabId) {
-      // A navigation tears down the injected page context.
-      try {
-        await chrome.tabs.sendMessage(tabId, { type: 'APPLY_AUDIO', settings: await getSettings(), enabled: false });
-      } catch {
-        // The old context may already be gone.
+      // YouTube Music changes the URL when a track changes without reloading
+      // the document. Only a real navigation should tear down the page hook.
+      const realNavigation = changeInfo.status === 'loading' || changeInfo.status === 'complete';
+      if (realNavigation || !(await canReachPageHook(tabId))) {
+        await disableHook(tabId);
+      } else {
+        // Same document: re-apply the hook's stored settings to the new media element.
+        await chrome.tabs.sendMessage(tabId, { type: 'REAPPLY_AUDIO' }).catch(() => undefined);
       }
-      await setHookTabId(null);
-      broadcastHookStatus(tabId, false, null);
     }
     if (changeInfo.url) await updateBadge(tabId, changeInfo.url);
     else if ((await getSessionTabId()) === tabId || (await getHookTabId()) === tabId) await updateBadge(tabId);
   })();
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  void (async () => {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    await updateBadge(tabId, tab?.url);
+  })();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void refreshActiveTabBadge();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  void refreshActiveTabBadge();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && ('autoEnable' in changes || 'sites' in changes)) {
+    void refreshActiveTabBadge();
+  }
 });
 
 chrome.tabCapture.onStatusChanged.addListener((info) => {

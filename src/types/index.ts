@@ -53,6 +53,7 @@ export type ExtensionMessage =
   | { type: 'UPDATE_SETTINGS'; target?: MessageTarget }
   | { type: 'APPLY_SETTINGS'; target: MessageTarget; payload: { settings: LofiSettings } }
   | { type: 'APPLY_AUDIO'; target: MessageTarget; payload: { settings: LofiSettings; enabled: boolean } }
+  | { type: 'REAPPLY_AUDIO'; target?: MessageTarget }
   | { type: 'GET_PAGE_STATUS'; target?: MessageTarget }
   | { type: 'PAGE_HOOK_STATUS'; target: MessageTarget; payload: { active: boolean; error: string | null } }
   | { type: 'HOOK_STATUS_CHANGED'; target: MessageTarget; payload: { tabId: number; active: boolean; error: string | null } }

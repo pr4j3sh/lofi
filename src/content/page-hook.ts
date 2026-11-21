@@ -174,6 +174,7 @@
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.source !== window || event.data?.channel !== CHANNEL) return;
     if (event.data.type === 'APPLY') apply(event.data.enabled === true, event.data.settings);
+    else if (event.data.type === 'REAPPLY') apply(enabled, settings);
     else if (event.data.type === 'GET_STATE') postState();
   });
 

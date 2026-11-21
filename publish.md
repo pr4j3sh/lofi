@@ -97,3 +97,4 @@ Features:
 - Simple EQ and gentle limiting.
 - Per-site settings and custom website support.
 - Audio keeps processing when the popup is closed.
+- Auto-enable marks supported sites as ready with a clear one-click prompt.

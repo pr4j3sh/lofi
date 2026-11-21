@@ -271,6 +271,7 @@ export default function App() {
   }
 
   const isOn = status.running || hookActive;
+  const showAutoPrompt = supported && settings.autoEnable && !isOn;
 
   return (
     <div className="app">
@@ -300,6 +301,10 @@ export default function App() {
           <span className="knob" />
         </span>
       </button>
+
+      {showAutoPrompt && (
+        <div className="auto-hint">Auto-enable is on. Click to start lofi.</div>
+      )}
 
       <ErrorBanner message={error ?? status.error} />
 

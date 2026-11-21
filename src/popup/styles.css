@@ -64,6 +64,17 @@ body {
 .power.on .switch { background: #9a86d4; justify-content: flex-end; }
 .knob { width: 15px; height: 15px; border-radius: 50%; background: #ece7f7; }
 
+.auto-hint {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #2a2440;
+  border: 1px solid #4a3f6b;
+  color: #d9c9ff;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .error-banner {
   margin-top: 12px;
   padding: 9px 11px;
