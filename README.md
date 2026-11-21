@@ -26,12 +26,12 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 4. Switch presets; speed and reverb change together. The **Reset to defaults** button appears whenever these differ from the default preset.
 5. Close the popup; audio keeps playing (the graph lives in an offscreen document).
 6. Turn lofi off; the tab's original audio returns and no audio is duplicated.
-7. On YouTube Music, lofi injects a page-level hook that uses the player's native playback rate for a cleaner tape-style slowdown. Spotify and custom domains use the tabCapture path.
+7. On supported sites with site access granted, lofi injects a page-level hook that uses native playback rate for a cleaner tape-style slowdown. Sites without access use the tabCapture path.
 8. While playing on YouTube Music, press next a few times. Processing stays active and follows the new track without turning off.
-9. Turn on auto-enable in Settings and open YouTube Music. Processing starts automatically with no popup click.
-10. Reload YouTube Music; processing resumes automatically. With auto-enable off, a reload stays off.
+9. Turn on auto-enable in Settings, grant site access to a supported website, and open it. Processing starts automatically with no popup click.
+10. Reload the page; processing resumes automatically. With auto-enable off, a reload stays off.
 11. Turn lofi off manually on YouTube Music; it stays off until you navigate to the page again.
-12. Spotify and custom domains still show a one-click prompt because Chrome requires a user gesture for tab capture.
+12. Sites without granted access show a one-click prompt because the page hook cannot be injected without site permission.
 13. Add a custom domain in Settings, reload the extension, and confirm it persists.
 14. Close the captured tab while playing; processing stops and the UI no longer reports active.
 
@@ -61,5 +61,5 @@ The conservative wet/dry scaling, limiter settings and slowed preset were inform
 
 - Slowdown is tape-style: it lowers pitch along with speed. Pitch-preserving time stretching is not implemented.
 - Only one tab can be processed at a time.
-- YouTube Music uses a page hook and a narrow host permission, so auto-enable can start processing without a popup click. Spotify and custom sites use tab capture, which Chrome only allows after a user gesture; those still need one click.
+- Auto-enable uses a page hook on any supported site with granted host access, so it can start without a popup click. Sites without granted access use tab capture, which Chrome only allows after a user gesture and therefore need one click. Some DRM or cross-origin-media sites may not expose a usable media element and will fall back to tab capture.
 - Audio behavior was implemented against current Chrome MV3 APIs; automated browser verification was not available in this environment.

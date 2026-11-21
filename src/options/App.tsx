@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { addCustomSite, removeSite, setSiteEnabled } from '../sites/site-manager';
+import { hasPageHookPermission, requestPageHookPermission } from '../sites/page-hook';
+import { addCustomSite, normalizeDomain, removeSite, setSiteEnabled } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
 import { getSettings, updateSettings } from '../storage/settings';
 import { errorMessage, sendMessage } from '../utils/messaging';
@@ -18,11 +19,39 @@ function isDefaultSettings(settings: LofiSettings): boolean {
 export default function App() {
   const [settings, setSettings] = useState<LofiSettings | null>(null);
   const [newDomain, setNewDomain] = useState('');
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void getSettings().then(setSettings).catch((cause: unknown) => setError(errorMessage(cause)));
+    void (async () => {
+      try {
+        const loaded = await getSettings();
+        setSettings(loaded);
+        await refreshPermissions(loaded.sites);
+      } catch (cause) {
+        setError(errorMessage(cause));
+      }
+    })();
+
+    const onPermissionChange = () => {
+      void getSettings()
+        .then((loaded) => refreshPermissions(loaded.sites))
+        .catch(() => undefined);
+    };
+    chrome.permissions.onAdded.addListener(onPermissionChange);
+    chrome.permissions.onRemoved.addListener(onPermissionChange);
+    return () => {
+      chrome.permissions.onAdded.removeListener(onPermissionChange);
+      chrome.permissions.onRemoved.removeListener(onPermissionChange);
+    };
   }, []);
+
+  async function refreshPermissions(sites: SupportedSite[]): Promise<void> {
+    const entries = await Promise.all(
+      sites.map(async (site) => [site.domain, await hasPageHookPermission(site.domain)] as const),
+    );
+    setPermissions(Object.fromEntries(entries));
+  }
 
   async function patch(patch: Partial<LofiSettings>): Promise<void> {
     try {
@@ -57,9 +86,32 @@ export default function App() {
     }
   }
 
-  function handleAdd(): void {
+  async function grantSite(domain: string, warnOnDeny = true): Promise<boolean> {
+    setError(null);
+    try {
+      const granted = await requestPageHookPermission(domain);
+      if (!granted) {
+        if (warnOnDeny) setError('Site access is required for automatic activation. You can still start lofi manually.');
+        return false;
+      }
+      setPermissions((current) => ({ ...current, [domain]: true }));
+      await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });
+      return true;
+    } catch (cause) {
+      setError(errorMessage(cause));
+      return false;
+    }
+  }
+
+  async function handleAdd(): Promise<void> {
     if (!settings) return;
     setError(null);
+    const domain = normalizeDomain(newDomain);
+    if (!domain) {
+      setError('Enter a valid domain, e.g. music.example.com');
+      return;
+    }
+    const granted = await grantSite(domain, false);
     const result = addCustomSite(settings.sites, newDomain);
     if (result.error) {
       setError(result.error);
@@ -67,6 +119,13 @@ export default function App() {
     }
     patchSites(result.sites);
     setNewDomain('');
+    if (!granted) setError('Website added. Allow site access in Settings to start it automatically.');
+  }
+
+  async function handleSiteToggle(site: SupportedSite, enabled: boolean): Promise<void> {
+    if (!settings) return;
+    if (enabled && !permissions[site.domain] && !(await grantSite(site.domain))) return;
+    patchSites(setSiteEnabled(settings.sites, site.domain, enabled));
   }
 
   if (!settings) return <div className="page">Loading…</div>;
@@ -90,7 +149,7 @@ export default function App() {
           />
           <span>
             Automatically enable lofi on supported websites
-            <small>Chrome still requires one click to grant audio capture.</small>
+            <small>Sites with site access start automatically. Others keep the one-click prompt.</small>
           </span>
         </label>
       </section>
@@ -171,18 +230,25 @@ export default function App() {
                 <input
                   type="checkbox"
                   checked={site.enabled}
-                  onChange={(event) => patchSites(setSiteEnabled(settings.sites, site.domain, event.target.checked))}
+                  onChange={(event) => void handleSiteToggle(site, event.target.checked)}
                 />
                 <span>
                   {site.name}
                   <small>{site.domain}</small>
                 </span>
               </label>
-              {site.custom && (
-                <button type="button" className="danger" onClick={() => patchSites(removeSite(settings.sites, site.domain))}>
-                  Remove
-                </button>
-              )}
+              <div className="site-actions">
+                {site.domain !== 'self' && !permissions[site.domain] && (
+                  <button type="button" onClick={() => void grantSite(site.domain)}>
+                    Allow auto
+                  </button>
+                )}
+                {site.custom && (
+                  <button type="button" className="danger" onClick={() => patchSites(removeSite(settings.sites, site.domain))}>
+                    Remove
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -193,7 +259,7 @@ export default function App() {
             value={newDomain}
             onChange={(event) => setNewDomain(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') handleAdd();
+              if (event.key === 'Enter') void handleAdd();
             }}
           />
           <button type="button" onClick={handleAdd}>Add website</button>

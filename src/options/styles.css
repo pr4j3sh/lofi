@@ -41,7 +41,18 @@ h2 { margin: 0 0 16px; font-size: 12px; text-transform: uppercase; letter-spacin
 }
 
 .site-list { list-style: none; margin: 0; padding: 0; }
-.site-list li { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2c2739; }
+.site-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #2c2739; }
+.site-actions { display: flex; align-items: center; gap: 8px; }
+.site-actions button {
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid #5a4b80;
+  background: #3b3157;
+  color: #e8dfff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
 .add-site { display: flex; gap: 8px; margin-top: 16px; }
 .add-site button, .danger {
   padding: 9px 13px;

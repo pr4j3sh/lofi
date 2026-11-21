@@ -3,7 +3,7 @@ import ControlSlider from './components/ControlSlider';
 import ErrorBanner from './components/ErrorBanner';
 import PresetPicker from './components/PresetPicker';
 import SettingsIcon from './components/SettingsIcon';
-import { isHookableDomain } from '../sites/hookable-sites';
+import { hasPageHookPermission } from '../sites/page-hook';
 import { findSite } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
 import { getSettings, settingsForDomain, updateSettings } from '../storage/settings';
@@ -49,7 +49,7 @@ export default function App() {
         activeTabId.current = tab?.id ?? null;
         const site = tab?.url ? findSite(tab.url, loaded.sites) : null;
         activeDomain.current = site?.domain ?? null;
-        const canUseHook = isHookableDomain(site?.domain);
+        const canUseHook = site && site.domain !== 'self' ? await hasPageHookPermission(site.domain) : false;
         setHookable(canUseHook);
         setSupported(site !== null);
         setSiteName(site?.name ?? (tab?.url ? 'Unsupported website' : 'Unknown website'));
@@ -266,6 +266,7 @@ export default function App() {
 
   const isOn = status.running || hookActive;
   const showAutoPrompt = supported && settings.autoEnable && !isOn;
+  const needsSiteAccess = showAutoPrompt && !hookable && activeDomain.current !== 'self';
 
   return (
     <div className="app">
@@ -303,7 +304,11 @@ export default function App() {
       </button>
 
       {showAutoPrompt && (
-        <div className="auto-hint">Auto-enable is on. Click to start lofi.</div>
+        <div className="auto-hint">
+          {needsSiteAccess
+            ? 'Auto-enable is on. Allow site access in Settings to start automatically.'
+            : 'Auto-enable is on. Click to start lofi.'}
+        </div>
       )}
 
       <ErrorBanner message={error ?? status.error} />

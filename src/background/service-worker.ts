@@ -1,4 +1,4 @@
-import { isHookableDomain } from '../sites/hookable-sites';
+import { hasPageHookPermission } from '../sites/page-hook';
 import { findSite } from '../sites/site-manager';
 import { getSettings, settingsForDomain } from '../storage/settings';
 import { errorMessage, handleMessage, sendMessage } from '../utils/messaging';
@@ -139,7 +139,8 @@ async function maybeAutoEnableHook(tabId: number, url: string): Promise<void> {
     const settings = await getSettings();
     if (!settings.autoEnable) return;
     const site = findSite(url, settings.sites);
-    if (!site || !isHookableDomain(site.domain)) return;
+    if (!site || site.domain === 'self') return;
+    if (!(await hasPageHookPermission(site.domain))) return;
 
     const captureTabId = await getSessionTabId();
     if (captureTabId !== null && captureTabId !== tabId) return;
@@ -373,6 +374,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
       }
     }
     if ('autoEnable' in changes || 'sites' in changes) await refreshActiveTabBadge();
+  })();
+});
+
+chrome.permissions.onAdded.addListener(() => {
+  void refreshActiveTabBadge();
+});
+
+chrome.permissions.onRemoved.addListener(() => {
+  void (async () => {
+    const hookTabId = await getHookTabId();
+    if (hookTabId !== null) {
+      const tab = await chrome.tabs.get(hookTabId).catch(() => null);
+      const settings = await getSettings();
+      const site = tab?.url ? findSite(tab.url, settings.sites) : null;
+      if (site && !(await hasPageHookPermission(site.domain))) await disableHook(hookTabId);
+    }
+    await refreshActiveTabBadge();
   })();
 });
 
