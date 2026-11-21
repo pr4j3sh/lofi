@@ -111,9 +111,9 @@ export default function App() {
   async function patchSettings(patch: Partial<LofiSettings>): Promise<void> {
     try {
       const domain = activeDomain.current;
+      const base = settings ?? (await getSettings());
       const fullPatch: Partial<LofiSettings> = { ...patch };
       if (domain && ('playbackSpeed' in patch || 'reverbMix' in patch)) {
-        const base = settings ?? (await getSettings());
         fullPatch.siteSettings = {
           ...base.siteSettings,
           [domain]: {
@@ -123,6 +123,7 @@ export default function App() {
           },
         };
       }
+      setSettings(settingsForDomain({ ...base, ...fullPatch }, domain));
       const updated = await updateSettings(fullPatch);
       setSettings(settingsForDomain(updated, domain));
       const response = await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });

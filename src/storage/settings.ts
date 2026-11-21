@@ -91,23 +91,18 @@ function matchesPresetValues(settings: LofiSettings, values: { playbackSpeed: nu
 export async function getSettings(): Promise<LofiSettings> {
   const stored = await chrome.storage.local.get(null);
   const settings = normalizeSettings(stored as Partial<LofiSettings>);
+  const storedVersion = typeof stored.lofiSettingsVersion === 'number' ? stored.lofiSettingsVersion : 0;
 
-  if (stored.lofiSettingsVersion !== 2) {
+  if (storedVersion < 2) {
     const legacy = LEGACY_PRESET_VALUES[settings.selectedPreset];
     const preset = PRESETS.find((candidate) => candidate.id === settings.selectedPreset);
     if (legacy && preset && matchesPresetValues(settings, legacy)) {
       settings.playbackSpeed = preset.playbackSpeed;
       settings.reverbMix = preset.reverbMix;
     }
-    await chrome.storage.local.set({
-      lofiSettingsVersion: 2,
-      playbackSpeed: settings.playbackSpeed,
-      reverbMix: settings.reverbMix,
-      selectedPreset: settings.selectedPreset,
-    });
   }
 
-  if (stored.lofiSettingsVersion !== SETTINGS_VERSION) {
+  if (storedVersion < 3) {
     if (settings.selectedPreset === 'rainy' && matchesPresetValues(settings, RAINY_V2_VALUES)) {
       const rainy = PRESETS.find((candidate) => candidate.id === 'rainy');
       if (rainy) {
@@ -115,6 +110,9 @@ export async function getSettings(): Promise<LofiSettings> {
         settings.reverbMix = rainy.reverbMix;
       }
     }
+  }
+
+  if (storedVersion < SETTINGS_VERSION) {
     await chrome.storage.local.set({
       lofiSettingsVersion: SETTINGS_VERSION,
       playbackSpeed: settings.playbackSpeed,

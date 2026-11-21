@@ -125,11 +125,13 @@ body {
 .preset:hover { border-color: #6b5c93; color: #e2d5ff; }
 .preset:active { transform: translateY(1px); }
 .preset:focus-visible { outline: 2px solid #b9a2ee; outline-offset: 2px; }
-.preset.selected {
-  border-color: #9a86d4;
-  background: linear-gradient(135deg, #6c58a0, #4b3c73);
+.presets .preset.selected,
+.presets .preset.selected:hover,
+.presets .preset.selected:focus-visible {
+  border-color: #b9a2ee;
+  background: linear-gradient(135deg, #7a64b4, #51407d);
   color: #fff;
-  box-shadow: 0 4px 14px #6c58a033;
+  box-shadow: 0 4px 14px #6c58a055, inset 0 1px 0 #ffffff26;
 }
 
 .reset-button {
