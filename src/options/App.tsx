@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import CreatorLinks from '../components/CreatorLinks';
 import RangeSlider from '../components/RangeSlider';
-import { hasPageHookPermission, requestPageHookPermission } from '../sites/page-hook';
+import SiteIcon from '../components/SiteIcon';
+import { pageHookOriginsForDomains } from '../sites/page-hook';
 import { addCustomSite, normalizeDomain, removeSite, setSiteEnabled } from '../sites/site-manager';
 import { DEFAULT_SETTINGS, PRESETS, SPEED_MAX, SPEED_MIN } from '../storage/defaults';
 import { getSettings, updateSettings } from '../storage/settings';
@@ -20,39 +22,13 @@ function isDefaultSettings(settings: LofiSettings): boolean {
 export default function App() {
   const [settings, setSettings] = useState<LofiSettings | null>(null);
   const [newDomain, setNewDomain] = useState('');
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const loaded = await getSettings();
-        setSettings(loaded);
-        await refreshPermissions(loaded.sites);
-      } catch (cause) {
-        setError(errorMessage(cause));
-      }
-    })();
-
-    const onPermissionChange = () => {
-      void getSettings()
-        .then((loaded) => refreshPermissions(loaded.sites))
-        .catch(() => undefined);
-    };
-    chrome.permissions.onAdded.addListener(onPermissionChange);
-    chrome.permissions.onRemoved.addListener(onPermissionChange);
-    return () => {
-      chrome.permissions.onAdded.removeListener(onPermissionChange);
-      chrome.permissions.onRemoved.removeListener(onPermissionChange);
-    };
+    void getSettings()
+      .then(setSettings)
+      .catch((cause: unknown) => setError(errorMessage(cause)));
   }, []);
-
-  async function refreshPermissions(sites: SupportedSite[]): Promise<void> {
-    const entries = await Promise.all(
-      sites.map(async (site) => [site.domain, await hasPageHookPermission(site.domain)] as const),
-    );
-    setPermissions(Object.fromEntries(entries));
-  }
 
   async function patch(patch: Partial<LofiSettings>): Promise<void> {
     try {
@@ -87,21 +63,29 @@ export default function App() {
     }
   }
 
-  async function grantSite(domain: string, warnOnDeny = true): Promise<boolean> {
+  async function requestSiteAccess(domains: string[], warnOnDeny = true): Promise<boolean> {
+    const origins = pageHookOriginsForDomains(domains);
+    if (origins.length === 0) return true;
     setError(null);
     try {
-      const granted = await requestPageHookPermission(domain);
-      if (!granted) {
-        if (warnOnDeny) setError('Site access is required for automatic activation. You can still start lofi manually.');
-        return false;
+      const granted = await chrome.permissions.request({ origins });
+      if (!granted && warnOnDeny) {
+        setError('Site access was not granted. Lofi can still be started manually from the popup.');
       }
-      setPermissions((current) => ({ ...current, [domain]: true }));
-      await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });
-      return true;
+      if (granted) await sendMessage({ type: 'UPDATE_SETTINGS', target: 'background' });
+      return granted;
     } catch (cause) {
       setError(errorMessage(cause));
       return false;
     }
+  }
+
+  async function handleAutoEnable(checked: boolean): Promise<void> {
+    if (!settings) return;
+    if (checked) {
+      await requestSiteAccess(settings.sites.filter((site) => site.enabled).map((site) => site.domain));
+    }
+    await patch({ autoEnable: checked });
   }
 
   async function handleAdd(): Promise<void> {
@@ -112,7 +96,6 @@ export default function App() {
       setError('Enter a valid domain, e.g. music.example.com');
       return;
     }
-    const granted = await grantSite(domain, false);
     const result = addCustomSite(settings.sites, newDomain);
     if (result.error) {
       setError(result.error);
@@ -120,12 +103,13 @@ export default function App() {
     }
     patchSites(result.sites);
     setNewDomain('');
-    if (!granted) setError('Website added. Allow site access in Settings to start it automatically.');
+    const granted = await requestSiteAccess([domain], false);
+    if (!granted) setError('Website added. Toggle it on to grant site access for automatic start.');
   }
 
   async function handleSiteToggle(site: SupportedSite, enabled: boolean): Promise<void> {
     if (!settings) return;
-    if (enabled && !permissions[site.domain] && !(await grantSite(site.domain))) return;
+    if (enabled && site.domain !== 'self') await requestSiteAccess([site.domain]);
     patchSites(setSiteEnabled(settings.sites, site.domain, enabled));
   }
 
@@ -148,13 +132,13 @@ export default function App() {
         <label className="toggle-row">
           <span className="toggle-copy">
             <span className="toggle-title">Automatically enable lofi on supported websites</span>
-            <small>Sites with site access start automatically. Others keep the one-click prompt.</small>
+            <small>Site access is requested when this is turned on. Otherwise, use the popup to start lofi.</small>
           </span>
           <span className="toggle">
             <input
               type="checkbox"
               checked={settings.autoEnable}
-              onChange={(event) => void patch({ autoEnable: event.target.checked })}
+              onChange={(event) => void handleAutoEnable(event.target.checked)}
               aria-label="Automatically enable lofi on supported websites"
             />
             <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
@@ -224,48 +208,37 @@ export default function App() {
       <section>
         <h2>Supported websites</h2>
         <ul className="site-list">
-          {settings.sites.map((site) => {
-            const canAuto = site.domain !== 'self' && permissions[site.domain] === true;
-            const status = site.domain === 'self' ? 'Test' : canAuto ? 'Auto' : 'Manual';
-            return (
-              <li className="site-row" key={site.domain}>
-                <label className="toggle-row site-toggle">
-                  <span className="toggle-copy">
-                    <span className="site-name">
-                      {site.name}
-                      <span className={`status-pill ${canAuto ? 'auto' : ''}`}>{status}</span>
-                    </span>
-                    <small>{site.domain}</small>
-                  </span>
-                  <span className="toggle toggle-small">
-                    <input
-                      type="checkbox"
-                      checked={site.enabled}
-                      onChange={(event) => void handleSiteToggle(site, event.target.checked)}
-                      aria-label={`Enable lofi on ${site.name}`}
-                    />
-                    <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
-                  </span>
-                </label>
-                <div className="site-actions">
-                  {site.domain !== 'self' && !canAuto && (
-                    <button type="button" className="button button-subtle" onClick={() => void grantSite(site.domain)}>
-                      Allow auto
-                    </button>
-                  )}
-                  {site.custom && (
-                    <button
-                      type="button"
-                      className="button button-danger"
-                      onClick={() => patchSites(removeSite(settings.sites, site.domain))}
-                    >
-                      Remove
-                    </button>
-                  )}
+          {settings.sites.map((site) => (
+            <li className="site-row" key={site.domain}>
+              <div className="site-main">
+                <SiteIcon domain={site.domain} label={site.name} />
+                <div className="site-copy">
+                  <span className="site-name">{site.name}</span>
+                  <small>{site.domain}</small>
                 </div>
-              </li>
-            );
-          })}
+              </div>
+              <div className="site-controls">
+                {site.custom && (
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    onClick={() => patchSites(removeSite(settings.sites, site.domain))}
+                  >
+                    Remove
+                  </button>
+                )}
+                <label className="toggle toggle-small">
+                  <input
+                    type="checkbox"
+                    checked={site.enabled}
+                    onChange={(event) => void handleSiteToggle(site, event.target.checked)}
+                    aria-label={`Enable lofi on ${site.name}`}
+                  />
+                  <span className="toggle-track" aria-hidden="true"><span className="toggle-knob" /></span>
+                </label>
+              </div>
+            </li>
+          ))}
         </ul>
         <div className="add-site">
           <input
@@ -283,6 +256,8 @@ export default function App() {
           </button>
         </div>
       </section>
+
+      <CreatorLinks className="options-footer" />
     </div>
   );
 }

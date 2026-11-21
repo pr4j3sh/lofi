@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import RangeSlider from '../components/RangeSlider';
+import SiteIcon from '../components/SiteIcon';
 import ErrorBanner from './components/ErrorBanner';
 import PresetPicker from './components/PresetPicker';
 import SettingsIcon from './components/SettingsIcon';
@@ -266,7 +267,6 @@ export default function App() {
 
   const isOn = status.running || hookActive;
   const showAutoPrompt = supported && settings.autoEnable && !isOn;
-  const needsSiteAccess = showAutoPrompt && !hookable && activeDomain.current !== 'self';
 
   return (
     <div className="app">
@@ -287,7 +287,7 @@ export default function App() {
       </header>
 
       <div className="site">
-        <span className={`site-dot ${supported ? 'supported' : ''}`} />
+        <SiteIcon domain={activeDomain.current ?? ''} label={siteName} />
         <span>{siteName}</span>
       </div>
 
@@ -303,13 +303,7 @@ export default function App() {
         </span>
       </button>
 
-      {showAutoPrompt && (
-        <div className="auto-hint">
-          {needsSiteAccess
-            ? 'Auto-enable is on. Allow site access in Settings to start automatically.'
-            : 'Auto-enable is on. Click to start lofi.'}
-        </div>
-      )}
+      {showAutoPrompt && <div className="auto-hint">Auto-enable is on. Click to start lofi.</div>}
 
       <ErrorBanner message={error ?? status.error} />
 

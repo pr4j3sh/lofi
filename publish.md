@@ -71,7 +71,7 @@ Be ready to justify each permission:
 - `scripting` — injects the page hook on supported players such as YouTube Music.
 - `storage` — persists settings and custom sites.
 - Host access to `https://music.youtube.com/*` — built-in support for zero-click auto-enable on YouTube Music.
-- Optional host access to `http://*/*` and `https://*/*` — only requested when a user adds or enables a website in Settings, so the page hook can be injected for automatic activation on that site.
+- Optional host access to `http://*/*` and `https://*/*` — only requested when a user turns on auto-enable, adds a website, or enables a site in Settings, so the page hook can be injected for automatic activation on that site.
 
 If a reviewer asks why both `tabCapture` and `scripting` are present: `scripting` injects a local page hook into sites the user has explicitly allowed; `tabCapture` remains the fallback for sites where the hook cannot attach. Host access is only used to inject local audio-processing code and is never used to read, upload, or store website data.
 

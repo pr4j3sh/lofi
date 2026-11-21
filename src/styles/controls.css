@@ -4,6 +4,24 @@
   --lofi-track: #3b354b;
 }
 
+.site-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #262133;
+}
+.site-icon-fallback {
+  border: 1px solid #4a435c;
+  color: #d9c9ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .control { margin-top: 20px; }
 .control-header {
   display: flex;

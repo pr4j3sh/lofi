@@ -26,13 +26,13 @@ For development, `npm run dev` rebuilds on change; reload the extension in `chro
 4. Switch presets; speed and reverb change together. The **Reset to defaults** button appears whenever these differ from the default preset.
 5. Close the popup; audio keeps playing (the graph lives in an offscreen document).
 6. Turn lofi off; the tab's original audio returns and no audio is duplicated.
-7. On supported sites with site access granted, lofi injects a page-level hook that uses native playback rate for a cleaner tape-style slowdown. Sites without access use the tabCapture path.
+7. On supported sites with site access granted, lofi injects a page-level hook that uses native playback rate for a cleaner tape-style slowdown. Sites without access fall back to the tabCapture path.
 8. While playing on YouTube Music, press next a few times. Processing stays active and follows the new track without turning off.
-9. Turn on auto-enable in Settings, grant site access to a supported website, and open it. Processing starts automatically with no popup click.
+9. Turn on auto-enable in Settings and approve the site-access prompt. Open a supported website; processing starts automatically with no popup click.
 10. Reload the page; processing resumes automatically. With auto-enable off, a reload stays off.
 11. Turn lofi off manually on YouTube Music; it stays off until you navigate to the page again.
 12. Sites without granted access show a one-click prompt because the page hook cannot be injected without site permission.
-13. Add a custom domain in Settings, reload the extension, and confirm it persists.
+13. Add a custom domain in Settings; it appears with its favicon (or a local monogram) and persists after reload. The pr4j3sh and GitHub links are in the settings footer.
 14. Close the captured tab while playing; processing stops and the UI no longer reports active.
 
 ## Presets
